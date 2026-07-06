@@ -186,6 +186,4 @@ app.delete('/bookings/:id', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`MediBook API running on http://localhost:${PORT}`);
-});
+module.exports = app;
