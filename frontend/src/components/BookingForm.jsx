@@ -12,7 +12,6 @@ function parseTime(timeStr) {
   return { hour: match[1].padStart(2, '0'), minute: match[2], ampm: match[3].toUpperCase() };
 }
 
-// Format phone as user types: xxx-xxx-xxxx
 function formatPhone(value) {
   const digits = value.replace(/\D/g, '').slice(0, 10);
   if (digits.length <= 3) return digits;
@@ -20,14 +19,13 @@ function formatPhone(value) {
   return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
 }
 
-// Validation helpers
 function validatePhone(phone) {
-  if (!phone) return true; // optional field
+  if (!phone) return true;
   return /^\d{3}-\d{3}-\d{4}$/.test(phone);
 }
 
 function validateEmail(email) {
-  if (!email) return true; // optional field
+  if (!email) return true;
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
@@ -52,7 +50,7 @@ export default function BookingForm({ editing, onSave, onCancel, loading }) {
   const [errors, setErrors] = useState({});
   const [apiError, setApiError] = useState('');
 
-  // Load doctors from Neon via API
+  // Load doctors
   useEffect(() => {
     getDoctors()
       .then((res) => {
@@ -62,19 +60,24 @@ export default function BookingForm({ editing, onSave, onCancel, loading }) {
       .finally(() => setLoadingDocs(false));
   }, [editing]);
 
-  // Set default doctor when doctors load for new appointments
+  // Set default doctor for NEW appointments when doctors are loaded
   useEffect(() => {
     if (!editing && doctors.length > 0 && !form.doctor_id) {
-      setForm((prev) => ({ ...prev, doctor_id: String(doctors[0].id) }));
+      setForm(prev => ({ ...prev, doctor_id: String(doctors[0].id) }));
     }
-  }, [doctors, editing, form.doctor_id]);
+  }, [doctors, editing]); // Removed form.doctor_id to prevent potential loops
 
+  // Reset form when editing prop changes
   useEffect(() => {
     if (editing) {
-      setForm({ ...EMPTY, ...editing, doctor_id: editing.doctor_id || '' });
+      setForm({
+        ...EMPTY,
+        ...editing,
+        doctor_id: editing.doctor_id ? String(editing.doctor_id) : ''
+      });
       setTimeParts(parseTime(editing.time));
     } else {
-      setForm((prev) => ({
+      setForm(prev => ({
         ...EMPTY,
         doctor_id: prev.doctor_id || ''
       }));
@@ -117,9 +120,17 @@ export default function BookingForm({ editing, onSave, onCancel, loading }) {
       setErrors(errs);
       return;
     }
+
     const userId = editing?.user_id || 'user_' + Date.now();
     const builtTime = `${timeParts.hour}:${timeParts.minute} ${timeParts.ampm}`;
-    onSave({ ...form, time: builtTime, user_id: userId });
+
+    // Ensure doctor_id is sent as string/number
+    onSave({
+      ...form,
+      time: builtTime,
+      user_id: userId,
+      doctor_id: form.doctor_id || null
+    });
   };
 
   return (
@@ -131,7 +142,6 @@ export default function BookingForm({ editing, onSave, onCancel, loading }) {
       )}
 
       <Form onSubmit={handleSubmit} noValidate>
-        {/* Patient name + Doctor */}
         <Row className="mb-3">
           <Col md={6}>
             <Form.Group>
@@ -174,7 +184,7 @@ export default function BookingForm({ editing, onSave, onCancel, loading }) {
           </Col>
         </Row>
 
-        {/* Date + Time */}
+        {/* Rest of the form remains the same */}
         <Row className="mb-3">
           <Col md={6}>
             <Form.Group>
@@ -210,7 +220,6 @@ export default function BookingForm({ editing, onSave, onCancel, loading }) {
           </Col>
         </Row>
 
-        {/* Phone + Email */}
         <Row className="mb-3">
           <Col md={6}>
             <Form.Group>
@@ -243,7 +252,6 @@ export default function BookingForm({ editing, onSave, onCancel, loading }) {
           </Col>
         </Row>
 
-        {/* Status */}
         <Row className="mb-3">
           <Col md={6}>
             <Form.Group>
@@ -257,7 +265,6 @@ export default function BookingForm({ editing, onSave, onCancel, loading }) {
           </Col>
         </Row>
 
-        {/* Notes */}
         <Form.Group className="mb-4">
           <Form.Label>Reason for visit / notes</Form.Label>
           <Form.Control
