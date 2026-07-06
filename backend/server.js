@@ -10,6 +10,7 @@ app.use(cors({
   origin: [
     'http://localhost:3000',
     'https://medibook-steel.vercel.app',
+    'https://medibook-suqj.vercel.app',  // add this
   ]
 }));
 app.use(express.json());
