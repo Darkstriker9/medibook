@@ -143,10 +143,16 @@ app.post('/bookings', async (req, res) => {
   try {
     const { title, description, date, time, phone_number, email, user_id, doctor_id, status } = req.body;
     if (!title || !date || !time) return res.status(400).json({ error: 'title, date, and time are required.' });
+
+    // Ensure doctor_id is valid integer or null (fixes empty string case)
+    const safeDoctorId = (doctor_id && doctor_id !== '' && doctor_id !== 'null')
+      ? parseInt(doctor_id, 10)
+      : null;
+
     const result = await pool.query(
       `INSERT INTO bookings (title, description, date, time, phone_number, email, user_id, doctor_id, status)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
-      [title, description, date, time, phone_number, email, user_id, doctor_id, status || 'pending']
+      [title, description, date, time, phone_number, email, user_id, safeDoctorId, status || 'pending']
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -162,6 +168,12 @@ app.put('/bookings/:id', async (req, res) => {
     const existing = await pool.query('SELECT * FROM bookings WHERE id = $1', [req.params.id]);
     if (existing.rows.length === 0) return res.status(404).json({ error: 'Booking not found.' });
     const c = existing.rows[0];
+
+    // Ensure doctor_id is valid integer or null
+    const safeDoctorId = (doctor_id && doctor_id !== '' && doctor_id !== 'null')
+      ? parseInt(doctor_id, 10)
+      : (doctor_id === null || doctor_id === undefined ? c.doctor_id : null);
+
     const result = await pool.query(
       `UPDATE bookings
        SET title=$1, description=$2, date=$3, time=$4,
@@ -170,7 +182,7 @@ app.put('/bookings/:id', async (req, res) => {
       [
         title ?? c.title, description ?? c.description, date ?? c.date, time ?? c.time,
         phone_number ?? c.phone_number, email ?? c.email, user_id ?? c.user_id,
-        doctor_id ?? c.doctor_id, status ?? c.status, req.params.id,
+        safeDoctorId, status ?? c.status, req.params.id,
       ]
     );
     res.json(result.rows[0]);

@@ -35,7 +35,6 @@ function validateDate(date) {
   if (!date) return false;
   const d = new Date(date);
   if (isNaN(d.getTime())) return false;
-  // Must be a real date (year between 2000 and 2100)
   const year = d.getFullYear();
   return year >= 2000 && year <= 2100;
 }
@@ -58,20 +57,27 @@ export default function BookingForm({ editing, onSave, onCancel, loading }) {
     getDoctors()
       .then((res) => {
         setDoctors(res.data);
-        if (!editing && res.data.length > 0) {
-          setForm((prev) => ({ ...prev, doctor_id: res.data[0].id }));
-        }
       })
       .catch(() => setApiError('Could not load doctors list.'))
       .finally(() => setLoadingDocs(false));
   }, [editing]);
+
+  // Set default doctor when doctors load for new appointments
+  useEffect(() => {
+    if (!editing && doctors.length > 0 && !form.doctor_id) {
+      setForm((prev) => ({ ...prev, doctor_id: String(doctors[0].id) }));
+    }
+  }, [doctors, editing, form.doctor_id]);
 
   useEffect(() => {
     if (editing) {
       setForm({ ...EMPTY, ...editing, doctor_id: editing.doctor_id || '' });
       setTimeParts(parseTime(editing.time));
     } else {
-      setForm((prev) => ({ ...EMPTY, doctor_id: prev.doctor_id }));
+      setForm((prev) => ({
+        ...EMPTY,
+        doctor_id: prev.doctor_id || ''
+      }));
       setTimeParts({ hour: '09', minute: '00', ampm: 'AM' });
     }
     setErrors({});
@@ -80,7 +86,7 @@ export default function BookingForm({ editing, onSave, onCancel, loading }) {
 
   const set = (field) => (e) => {
     setForm((prev) => ({ ...prev, [field]: e.target.value }));
-    setErrors((prev) => ({ ...prev, [field]: '' })); // clear error on change
+    setErrors((prev) => ({ ...prev, [field]: '' }));
   };
 
   const handlePhoneChange = (e) => {
@@ -107,7 +113,10 @@ export default function BookingForm({ editing, onSave, onCancel, loading }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     const errs = validate();
-    if (Object.keys(errs).length > 0) { setErrors(errs); return; }
+    if (Object.keys(errs).length > 0) {
+      setErrors(errs);
+      return;
+    }
     const userId = editing?.user_id || 'user_' + Date.now();
     const builtTime = `${timeParts.hour}:${timeParts.minute} ${timeParts.ampm}`;
     onSave({ ...form, time: builtTime, user_id: userId });
@@ -122,7 +131,6 @@ export default function BookingForm({ editing, onSave, onCancel, loading }) {
       )}
 
       <Form onSubmit={handleSubmit} noValidate>
-
         {/* Patient name + Doctor */}
         <Row className="mb-3">
           <Col md={6}>
